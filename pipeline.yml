@@ -1,0 +1,45 @@
+name: Multi-Account Deployment
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install boto3 urllib3
+      
+      - name: Create tmp directory
+        run: mkdir -p ./tmp
+      
+      - name: Configure AWS credentials for dev
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::470822489487:role/quicksightpoc-trustrole
+          aws-region: us-east-1
+          role-session-name: GitHubDeploymentSession
+      
+      - name: Build in dev environment
+        run: python folderexport.py --account-id 470822489487 --region us-east-1 --folder-id f286a908-ed92-4b89-ad22-af4c2a0b54b3 --output /tmp/QuickSightBundle.zip
+      
+      - name: Upload QuickSight bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: quicksight-bundle
+          path: /tmp/QuickSightBundle.zip
+          retention-days: 5
